@@ -38,6 +38,41 @@ except Exception:
     FFMPEG_EXE = shutil.which("ffmpeg")
 
 
+def get_yt_dlp_common_opts() -> Dict[str, Any]:
+    """
+    Common yt-dlp options configured with mobile client spoofing (Android/iOS)
+    to bypass YouTube datacenter bot verification, with automatic cookies support.
+    """
+    opts: Dict[str, Any] = {
+        "quiet": True,
+        "no_warnings": True,
+        "socket_timeout": 20,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "mweb", "web"],
+                "player_skip": ["configs", "js"],
+            }
+        },
+    }
+
+    # Automatically check for cookies.txt
+    cookie_candidates = [
+        os.environ.get("YOUTUBE_COOKIES_FILE"),
+        "data/cookies.txt",
+        "/app/data/cookies.txt",
+        "cookies.txt",
+        "/app/cookies.txt",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt"),
+    ]
+    for cp in cookie_candidates:
+        if cp and os.path.isfile(cp):
+            opts["cookiefile"] = cp
+            logger.info(f"Kasutatakse YouTube küpsiseid: {cp}")
+            break
+
+    return opts
+
+
 @dataclass
 class TranscriptSegment:
     """Represents a single snippet of a transcript with timing."""
@@ -192,12 +227,11 @@ class YouTubeTranscriber:
 
         standard_url = f"https://www.youtube.com/watch?v={video_id}"
 
-        ydl_opts = {
+        ydl_opts = get_yt_dlp_common_opts()
+        ydl_opts.update({
             "skip_download": True,
-            "quiet": True,
-            "no_warnings": True,
             "extract_flat": False,
-        }
+        })
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -306,11 +340,29 @@ class YouTubeTranscriber:
             segments, chosen_lang = self._fetch_timedtext_segments(standard_url, meta, language)
             used_engine = "enhanced_timedtext"
         except Exception as e:
+            err_msg = str(e)
+            if "Sign in to confirm you’re not a bot" in err_msg or "confirm you're not a bot" in err_msg.lower():
+                logger.error(f"YouTube nõuab botikontrolli: {err_msg}")
+                raise RuntimeError(
+                    "YouTube blokeerib selle serveri (VPS) IP-aadressi robotikaitsega ('Sign in to confirm you're not a bot'). "
+                    "Lahendus: Lisa serverisse 'cookies.txt' fail (ekspordi oma brauserist YouTube küpsised) "
+                    "või kasuta kohalikku masinat (localhost)."
+                ) from e
+
             logger.warning(f"Subtiitrite laadimine ebaõnnestus: {e}")
             if fallback_to_audio and FFMPEG_EXE:
                 logger.info("Üritatakse audiotranskriptsiooni (Speech Recognition)...")
-                segments, chosen_lang = self._transcribe_audio_stream(standard_url, meta, language)
-                used_engine = "audio_fallback"
+                try:
+                    segments, chosen_lang = self._transcribe_audio_stream(standard_url, meta, language)
+                    used_engine = "audio_fallback"
+                except Exception as audio_err:
+                    audio_err_msg = str(audio_err)
+                    if "Sign in to confirm you’re not a bot" in audio_err_msg or "confirm you're not a bot" in audio_err_msg.lower():
+                        raise RuntimeError(
+                            "YouTube blokeerib selle serveri (VPS) IP-aadressi robotikaitsega ('Sign in to confirm you're not a bot'). "
+                            "Lahendus: Lisa serverisse 'cookies.txt' fail (ekspordi brauserist) või seadista YOUTUBE_COOKIES_FILE."
+                        ) from audio_err
+                    raise
             else:
                 raise RuntimeError(
                     f"Subtiitreid ei leitud videole {video_id}. Täpne viga: {e}"
@@ -367,17 +419,16 @@ class YouTubeTranscriber:
 
         tmp_dir = tempfile.mkdtemp(prefix="ytsub_")
         try:
-            ydl_opts = {
+            ydl_opts = get_yt_dlp_common_opts()
+            ydl_opts.update({
                 "skip_download": True,
                 "writesubtitles": True,
                 "writeautomaticsub": True,
                 "subtitleslangs": [chosen_lang],
                 "subtitlesformat": "vtt/srt/best",
                 "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
-                "quiet": True,
-                "no_warnings": True,
                 "ignoreerrors": True,
-            }
+            })
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
@@ -556,12 +607,11 @@ class YouTubeTranscriber:
         tmp_dir = tempfile.mkdtemp(prefix="ytaudio_")
         try:
             out_path = os.path.join(tmp_dir, "audio.%(ext)s")
-            ydl_opts = {
+            ydl_opts = get_yt_dlp_common_opts()
+            ydl_opts.update({
                 "format": "bestaudio/best",
                 "outtmpl": out_path,
-                "quiet": True,
-                "no_warnings": True,
-            }
+            })
             if FFMPEG_EXE:
                 ydl_opts["ffmpeg_location"] = FFMPEG_EXE
 

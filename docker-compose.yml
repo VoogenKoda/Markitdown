@@ -7,3 +7,5 @@ services:
       - "8085:8000"
     environment:
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./cookies.txt:/app/cookies.txt:ro

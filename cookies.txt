@@ -5,3 +5,4 @@
 # Juhis: YouTube blokeerib pilveserverite (VPS) IP-aadresse ilma sisselogimiseta.
 # Kui YouTube nõuab "Sign in to confirm you’re not a bot", ekspordi oma brauserist
 # (nt laiendusega "Get cookies.txt LOCALLY") youtube.com küpsised ja kleebi siia faili.
+

@@ -38,10 +38,46 @@ except Exception:
     FFMPEG_EXE = shutil.which("ffmpeg")
 
 
+def find_valid_cookie_file() -> Optional[str]:
+    """
+    Finds a valid cookies.txt file that contains actual cookie entries (not just comments).
+    Also supports raw cookie content via YOUTUBE_COOKIES_CONTENT env var.
+    """
+    raw_content = os.environ.get("YOUTUBE_COOKIES_CONTENT")
+    if raw_content and raw_content.strip():
+        tmp_cookie_path = os.path.join(tempfile.gettempdir(), "yt_env_cookies.txt")
+        try:
+            with open(tmp_cookie_path, "w", encoding="utf-8") as f:
+                f.write(raw_content.strip() + "\n")
+            return tmp_cookie_path
+        except Exception as e:
+            logger.warning(f"Ei saanud YOUTUBE_COOKIES_CONTENT faili kirjutada: {e}")
+
+    cookie_candidates = [
+        os.environ.get("YOUTUBE_COOKIES_FILE"),
+        "data/cookies.txt",
+        "/app/data/cookies.txt",
+        "cookies.txt",
+        "/app/cookies.txt",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt"),
+    ]
+    for cp in cookie_candidates:
+        if cp and os.path.isfile(cp):
+            try:
+                with open(cp, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                valid_lines = [l for l in content.splitlines() if l.strip() and not l.strip().startswith("#")]
+                if valid_lines:
+                    return cp
+            except Exception:
+                continue
+    return None
+
+
 def get_yt_dlp_common_opts() -> Dict[str, Any]:
     """
     Common yt-dlp options configured with mobile client spoofing (Android/iOS)
-    to bypass YouTube datacenter bot verification, with automatic cookies support.
+    to bypass YouTube datacenter bot verification, with automatic cookies and proxy support.
     """
     opts: Dict[str, Any] = {
         "quiet": True,
@@ -55,20 +91,17 @@ def get_yt_dlp_common_opts() -> Dict[str, Any]:
         },
     }
 
+    # Automatically check for proxy
+    proxy = os.environ.get("YOUTUBE_PROXY") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+    if proxy:
+        opts["proxy"] = proxy
+        logger.info(f"Kasutatakse YouTube proxy't: {proxy}")
+
     # Automatically check for cookies.txt
-    cookie_candidates = [
-        os.environ.get("YOUTUBE_COOKIES_FILE"),
-        "data/cookies.txt",
-        "/app/data/cookies.txt",
-        "cookies.txt",
-        "/app/cookies.txt",
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt"),
-    ]
-    for cp in cookie_candidates:
-        if cp and os.path.isfile(cp):
-            opts["cookiefile"] = cp
-            logger.info(f"Kasutatakse YouTube küpsiseid: {cp}")
-            break
+    cookie_file = find_valid_cookie_file()
+    if cookie_file:
+        opts["cookiefile"] = cookie_file
+        logger.info(f"Kasutatakse YouTube küpsiseid: {cookie_file}")
 
     return opts
 
@@ -468,10 +501,27 @@ class YouTubeTranscriber:
     def _fetch_via_youtube_transcript_api(
         self, video_id: str, language: Optional[str]
     ) -> Tuple[List[TranscriptSegment], str]:
-        """Secondary fallback using youtube-transcript-api."""
+        """Secondary fallback using youtube-transcript-api with proxy and cookiejar support."""
+        import http.cookiejar
+        import requests
         from youtube_transcript_api import YouTubeTranscriptApi
 
-        ytt = YouTubeTranscriptApi()
+        session = requests.Session()
+        proxy = os.environ.get("YOUTUBE_PROXY") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+        if proxy:
+            session.proxies = {"http": proxy, "https": proxy}
+
+        cookie_file = find_valid_cookie_file()
+        if cookie_file:
+            try:
+                jar = http.cookiejar.MozillaCookieJar(cookie_file)
+                jar.load(ignore_discard=True, ignore_expires=True)
+                session.cookies = jar
+                logger.info(f"youtube-transcript-api kasutab küpsiseid: {cookie_file}")
+            except Exception as e:
+                logger.warning(f"Küpsiste laadimine youtube-transcript-api jaoks ebaõnnestus: {e}")
+
+        ytt = YouTubeTranscriptApi(http_client=session)
         transcript_list = ytt.list(video_id)
 
         target_transcript = None

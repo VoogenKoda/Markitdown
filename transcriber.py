@@ -86,10 +86,14 @@ def get_yt_dlp_common_opts() -> Dict[str, Any]:
         "extractor_args": {
             "youtube": {
                 "player_client": ["android", "ios", "mweb", "web"],
-                "player_skip": ["configs", "js"],
             }
         },
     }
+
+    # Automatically enable Node.js runtime and remote challenge solver if available
+    if shutil.which("node"):
+        opts["js_runtimes"] = {"node": {}}
+        opts["remote_components"] = ["ejs:github"]
 
     # Automatically check for proxy
     proxy = os.environ.get("YOUTUBE_PROXY") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")

@@ -1,9 +1,10 @@
 FROM python:3.11-slim
 
-# Paigalda ffmpeg, tesseract-ocr, libgl ja tööriistad
+# Paigalda ffmpeg, tesseract-ocr, libgl, nodejs ja tööriistad
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
+    nodejs \
     tesseract-ocr \
     libgl1 \
     libglib2.0-0 \

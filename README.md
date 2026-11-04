@@ -176,7 +176,19 @@ Docker konteiner sisaldab kõiki vajalikke süsteemiteeke (`ffmpeg`, `tesseract-
 docker compose up -d --build
 ```
 
-Rakendus on koheselt saadaval pordil `8000`: `http://<sinu-ip>:8000`
+Rakendus on saadaval pordil `8085` (või `8000`): `http://<sinu-ip>:8085`
+
+---
+
+## 🤖 n8n ja REST API Integratsioon
+
+Teenusel on täielik REST API koos automaatse Swagger dokumentatsiooniga:
+- **Swagger UI:** `https://markitdown.sinudomeen.ee/docs`
+- **ReDoc:** `https://markitdown.sinudomeen.ee/redoc`
+- **OpenAPI JSON:** `https://markitdown.sinudomeen.ee/openapi.json`
+
+Täpse samm-sammult n8n seadistusjuhendi, väljade kaardistused ja imporditava workflow JSON koodi leiad failist:  
+👉 **[N8N_AND_API.md](N8N_AND_API.md)**
 
 ---
 

@@ -1,0 +1,27 @@
+# MarkItDown Studio Dependencies (YouTube, PDF & Images)
+
+# Core MarkItDown & YouTube
+markitdown>=0.1.9
+yt-dlp>=2026.10.0
+youtube-transcript-api>=1.2.0
+SpeechRecognition>=3.17.0
+imageio-ffmpeg>=0.6.0
+pydub>=0.25.1
+
+# PDF to Markdown & Table Extraction
+pdfplumber>=0.11.0
+pdfminer.six>=20260107
+PyMuPDF>=1.24.0
+
+# Images (EXIF Metadata & OCR)
+Pillow>=10.0.0
+rapidocr-onnxruntime>=1.2.0
+pytesseract>=0.3.10
+
+# Web Application & API
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-multipart>=0.0.9
+jinja2>=3.1.4
+requests>=2.31.0
+rich>=13.0.0

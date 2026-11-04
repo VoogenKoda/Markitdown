@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarkItDown Studio | YouTube, PDF & Piltide EXIF/OCR</title>
+  <meta name="description" content="Võimas Markdown konverter Microsoft MarkItDown baasil: YouTube kõne transkribeerimine, PDF dokumentide teisendamine ja piltide EXIF metaandmed koos OCR tekstituvastusega.">
+  
+  <!-- Modern Google Fonts: Outfit & Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- App Stylesheet with cache buster -->
+  <link rel="stylesheet" href="/static/css/style.css?v=2.1.0">
+  
+  <!-- Essential Scoped Styles (Guarantees modern dark styling regardless of browser cache) -->
+  <style>
+    /* Multi-Mode Segmented Selector */
+    .mode-selector-container {
+      display: flex;
+      justify-content: center;
+      margin: 0 auto 26px auto;
+      width: 100%;
+      max-width: 600px;
+      position: relative;
+      z-index: 10;
+    }
+    .mode-selector {
+      display: flex;
+      width: 100%;
+      background: rgba(13, 18, 31, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+      padding: 5px;
+      gap: 6px;
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.15);
+    }
+    button.mode-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 9999px;
+      border: 1px solid transparent !important;
+      background: transparent !important;
+      color: #94a3b8 !important;
+      font-family: 'Outfit', 'Inter', -apple-system, sans-serif !important;
+      font-size: 0.92rem !important;
+      font-weight: 600 !important;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+      user-select: none;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      box-shadow: none !important;
+    }
+    button.mode-btn:hover {
+      color: #f8fafc !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+    button.mode-btn.active {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%) !important;
+      color: #ffffff !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+      box-shadow: 0 4px 18px rgba(99, 102, 241, 0.45) !important;
+    }
+    button.mode-btn[data-mode="pdf"].active {
+      background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%) !important;
+      box-shadow: 0 4px 18px rgba(236, 72, 153, 0.45) !important;
+    }
+    button.mode-btn[data-mode="image"].active {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%) !important;
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45) !important;
+    }
+
+    /* Dropzones */
+    .dropzone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 38px 24px;
+      border: 2px dashed rgba(255, 255, 255, 0.16);
+      border-radius: 16px;
+      background: rgba(10, 15, 28, 0.45);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      text-align: center;
+      gap: 12px;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #6366f1;
+      background: rgba(99, 102, 241, 0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+    }
+    #pdf-dropzone:hover, #pdf-dropzone.dragover {
+      border-color: #ec4899;
+      background: rgba(236, 72, 153, 0.08);
+      box-shadow: 0 8px 30px rgba(236, 72, 153, 0.15);
+    }
+    #image-dropzone:hover, #image-dropzone.dragover {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.08);
+      box-shadow: 0 8px 30px rgba(16, 185, 129, 0.15);
+    }
+    .dropzone-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.12);
+      color: #6366f1;
+      transition: transform 0.2s ease;
+    }
+    #pdf-dropzone .dropzone-icon {
+      background: rgba(236, 72, 153, 0.12);
+      color: #ec4899;
+    }
+    #image-dropzone .dropzone-icon {
+      background: rgba(16, 185, 129, 0.12);
+      color: #10b981;
+    }
+    .dropzone:hover .dropzone-icon {
+      transform: scale(1.08);
+    }
+    .dropzone-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+    .dropzone-link {
+      color: #6366f1;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+    #pdf-dropzone .dropzone-link { color: #f472b6; }
+    #image-dropzone .dropzone-link { color: #34d399; }
+    .dropzone-sub {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    /* File Selected Banner */
+    .file-selected-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: rgba(18, 26, 44, 0.85);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: 14px;
+      margin-top: 16px;
+    }
+    .file-selected-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .file-selected-icon {
+      font-size: 1.8rem;
+    }
+    .file-selected-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .file-selected-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #f8fafc;
+      word-break: break-all;
+    }
+    .file-selected-size {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    .file-remove-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .file-remove-btn:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    /* Image Preview Box */
+    .image-preview-box {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      padding: 14px;
+      background: rgba(10, 15, 28, 0.75);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 14px;
+      margin-top: 16px;
+    }
+    .image-preview-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .image-preview-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+    .image-preview-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #f8fafc;
+    }
+    .image-preview-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .image-badge {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #38bdf8;
+    }
+  </style>
+  
+  <!-- Markdown parser library (marked.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <div class="app-container">
+    <!-- Header / Navbar -->
+    <header class="navbar" id="main-header">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/>
+            <polygon points="10 15 15 12 10 9"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="brand-title">MarkItDown</span>
+          <span class="brand-subtitle">Studio • Multi-Format Suite</span>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <a href="https://github.com/microsoft/markitdown" target="_blank" rel="noopener noreferrer" class="badge-link">
+          <span class="badge-dot"></span>
+          <span>Microsoft MarkItDown</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+        <button id="batch-toggle-btn" class="header-btn" title="Hulgitranskribeerimine" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          <span>Hulgirežiim</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="main-content">
+      <!-- Hero section -->
+      <section class="hero-section">
+        <div class="hero-pill" id="hero-pill">
+          <span class="hero-sparkle">✨</span>
+          <span id="hero-pill-text">Tehisintellekti jaoks optimeeritud Markdown konverter</span>
+        </div>
+        <h1 class="hero-title" id="hero-title">Muuda sisu <span class="gradient-text">puhtaks Markdowniks</span></h1>
+        <p class="hero-desc" id="hero-desc">
+          Transkribeeri YouTube kõnet, teisenda PDF tabeleid ja dokumente või loe piltidelt EXIF metaandmeid ning teksti (OCR).
+        </p>
+      </section>
+
+      <!-- Multi-Mode Segmented Selector (Clean SVG icons, no duplicate emojis) -->
+      <div class="mode-selector-container">
+        <div class="mode-selector">
+          <button class="mode-btn active" data-mode="youtube" id="mode-youtube-btn" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+            <span>YouTube Kõne</span>
+          </button>
+          <button class="mode-btn" data-mode="pdf" id="mode-pdf-btn" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <span>PDF Dokument</span>
+          </button>
+          <button class="mode-btn" data-mode="image" id="mode-image-btn" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <span>Pildid (EXIF & OCR)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           MODE 1: YOUTUBE SECTION
+           =================================================================== -->
+      <div id="youtube-section" class="mode-view">
+        <section class="input-card glass-panel" id="input-card">
+          <div class="url-input-container">
+            <div class="input-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <input 
+              type="url" 
+              id="youtube-url-input" 
+              placeholder="Kleebi YouTube video link siia (nt https://www.youtube.com/watch?v=...)" 
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <div class="input-actions">
+              <button id="paste-btn" class="action-btn" title="Kleebi lõikelaualt" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Kleebi</span>
+              </button>
+              <button id="clear-btn" class="action-btn" title="Tühjenda väli" type="button" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <button id="transcribe-btn" class="primary-btn" type="button">
+              <span class="btn-text" id="transcribe-btn-text">Transkribeeri</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+
+          <!-- Quick Demo Chips for Speech Mode -->
+          <div class="demo-chips" id="speech-chips">
+            <span class="demo-label">Kiirproovid:</span>
+            <button class="chip-btn" data-url="https://www.youtube.com/watch?v=bZQun8Y4L2A" type="button">
+              🤖 Andrej Karpathy (State of GPT)
+            </button>
+            <button class="chip-btn" data-url="https://www.youtube.com/watch?v=aircAruvnKk" type="button">
+              🧠 3Blue1Brown (Neural Networks)
+            </button>
+            <button class="chip-btn" data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" type="button">
+              🎵 Rick Astley
+            </button>
+          </div>
+        </section>
+
+        <!-- Video Preview Card -->
+        <section class="video-preview-card glass-panel" id="video-preview-card" style="display: none;">
+          <div class="preview-thumb-container">
+            <img id="preview-thumb" src="" alt="Video pisipilt" class="preview-thumb">
+            <span id="preview-duration" class="preview-duration-badge">00:00</span>
+            <a id="preview-yt-link" href="#" target="_blank" rel="noopener noreferrer" class="preview-play-btn" title="Ava YouTube'is">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </a>
+          </div>
+          <div class="preview-details">
+            <div class="preview-channel-row">
+              <span id="preview-channel" class="preview-channel">Autor</span>
+              <span id="preview-date" class="preview-date">Kuupäev</span>
+            </div>
+            <h2 id="preview-title" class="preview-title">Video pealkiri</h2>
+            <div class="preview-stats-row">
+              <span id="preview-views" class="preview-stat-item">👁️ 0 vaatamist</span>
+              <span id="preview-subs-count" class="preview-stat-item">💬 0 keelt saadaval</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Speech Options Panel -->
+        <section class="options-card glass-panel" id="speech-options-panel">
+          <div class="options-header">
+            <div class="options-title-group">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span class="options-title">Transkriptsiooni seaded</span>
+            </div>
+            <span class="options-tag">Microsoft MarkItDown</span>
+          </div>
+
+          <div class="options-grid">
+            <div class="option-field">
+              <label class="field-label">Ajatemplite stiil:</label>
+              <div class="radio-pill-group" id="timestamps-mode-group">
+                <label class="radio-pill active" data-mode="interval">
+                  <input type="radio" name="timestamps" value="interval" checked>
+                  <span class="pill-title">⏱️ Intervall</span>
+                  <span class="pill-sub">Kogub laused 30s kaupa</span>
+                </label>
+                <label class="radio-pill" data-mode="sentence">
+                  <input type="radio" name="timestamps" value="sentence">
+                  <span class="pill-title">💬 Lause kaupa</span>
+                  <span class="pill-sub">Iga subtiiter eraldi real</span>
+                </label>
+                <label class="radio-pill" data-mode="none">
+                  <input type="radio" name="timestamps" value="none">
+                  <span class="pill-title">📄 Puhas tekst</span>
+                  <span class="pill-sub">Ilma ajatempliteta</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="option-field" id="interval-field">
+              <div class="field-label-row">
+                <label class="field-label" for="interval-slider">Intervalli pikkus:</label>
+                <span id="interval-display" class="slider-badge">30 sekundit</span>
+              </div>
+              <input type="range" id="interval-slider" min="10" max="120" step="5" value="30" class="range-slider">
+              <div class="slider-ticks">
+                <span>10s</span>
+                <span>30s</span>
+                <span>60s</span>
+                <span>120s</span>
+              </div>
+            </div>
+
+            <div class="option-field">
+              <label class="field-label" for="language-select">Keelevalik:</label>
+              <div class="select-container">
+                <select id="language-select" class="custom-select">
+                  <option value="">Automaatne (Parim leitud)</option>
+                  <option value="et">Eesti keel (et)</option>
+                  <option value="en" selected>Inglise keel (en)</option>
+                </select>
+                <div class="select-arrow">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+              <span class="field-helper" id="lang-helper">Video lingi sisestamisel laaditakse siia video tegelikud keeled.</span>
+            </div>
+
+            <div class="option-field toggle-field">
+              <label class="field-label">Algne MarkItDown teisendaja:</label>
+              <label class="switch-container">
+                <input type="checkbox" id="native-toggle">
+                <span class="switch-slider"></span>
+                <span class="switch-label">Kasuta Microsofti standardset DocumentConverterit</span>
+              </label>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===================================================================
+           MODE 2: PDF TO MARKDOWN SECTION
+           =================================================================== -->
+      <div id="pdf-section" class="mode-view" style="display: none;">
+        <section class="input-card glass-panel">
+          <div class="dropzone" id="pdf-dropzone">
+            <div class="dropzone-icon">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 12 15 15"/>
+              </svg>
+            </div>
+            <div class="dropzone-text">
+              <div class="dropzone-title">Lohista PDF fail siia või <span class="dropzone-link">vali fail arvutist</span></div>
+              <div class="dropzone-sub">Toetab PDF aruandeid, tabeleid, raamatuid ja skannitud lehti</div>
+            </div>
+            <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+          </div>
+
+          <!-- File Selected Display -->
+          <div id="pdf-selected-box" class="file-selected-box" style="display: none;">
+            <div class="file-selected-left">
+              <span class="file-selected-icon">📄</span>
+              <div class="file-selected-details">
+                <span id="pdf-file-name" class="file-selected-name">dokument.pdf</span>
+                <span id="pdf-file-size" class="file-selected-size">0 KB</span>
+              </div>
+            </div>
+            <button id="pdf-remove-btn" class="file-remove-btn" title="Eemalda fail" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Quick Demo Chips for PDF -->
+          <div class="demo-chips">
+            <span class="demo-label">Kiirproov:</span>
+            <button class="chip-btn" id="demo-pdf-btn" type="button">
+              📄 Proovi näidis-PDF raportit (Tabelid & Struktuur)
+            </button>
+          </div>
+
+          <!-- Convert PDF Button -->
+          <div style="margin-top: 18px; display: flex; justify-content: flex-end;">
+            <button id="convert-pdf-btn" class="primary-btn" type="button" style="background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);">
+              <span class="btn-text" id="convert-pdf-btn-text">Teisenda PDF Markdowniks</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <!-- PDF Options Panel -->
+        <section class="options-card glass-panel">
+          <div class="options-header">
+            <div class="options-title-group">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span class="options-title">PDF Teisenduse Sätted</span>
+            </div>
+            <span class="options-tag" style="background: rgba(236, 72, 153, 0.15); color: #f472b6; border-color: rgba(236, 72, 153, 0.3);">PyMuPDF & MarkItDown</span>
+          </div>
+
+          <div class="options-grid">
+            <div class="option-field toggle-field">
+              <label class="field-label">Tabelite struktuurne tuvastus:</label>
+              <label class="switch-container">
+                <input type="checkbox" id="pdf-tables-toggle" checked>
+                <span class="switch-slider"></span>
+                <span class="switch-label">Tuvasta tabelid ja vorminda Markdown tabeliteks (|---|---|)</span>
+              </label>
+            </div>
+            <div class="option-field toggle-field">
+              <label class="field-label">Skannitud lehtede OCR tekstituvastus:</label>
+              <label class="switch-container">
+                <input type="checkbox" id="pdf-ocr-toggle" checked>
+                <span class="switch-slider"></span>
+                <span class="switch-label">Kui PDF leht on pilt ilma tekstita, käivita automaatselt OCR</span>
+              </label>
+            </div>
+            <div class="option-field toggle-field">
+              <label class="field-label">Algne MarkItDown mootor:</label>
+              <label class="switch-container">
+                <input type="checkbox" id="pdf-native-toggle">
+                <span class="switch-slider"></span>
+                <span class="switch-label">Kasuta Microsofti algset pdfplumber/pdfminer toru</span>
+              </label>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===================================================================
+           MODE 3: IMAGES (EXIF & OCR) SECTION
+           =================================================================== -->
+      <div id="image-section" class="mode-view" style="display: none;">
+        <section class="input-card glass-panel">
+          <div class="dropzone" id="image-dropzone">
+            <div class="dropzone-icon">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <div class="dropzone-text">
+              <div class="dropzone-title">Lohista pilt siia või <span class="dropzone-link">vali pildifail</span></div>
+              <div class="dropzone-sub">JPG, PNG, WEBP, TIFF, BMP (Eraldab EXIF metaandmed, GPS ja OCR teksti)</div>
+            </div>
+            <input type="file" id="image-file-input" accept="image/*" style="display: none;">
+          </div>
+
+          <!-- Image Preview Display -->
+          <div id="image-selected-box" class="image-preview-box" style="display: none;">
+            <img id="image-preview-thumb" src="" alt="Pildi eelvaade" class="image-preview-thumb">
+            <div class="image-preview-info">
+              <span id="image-file-name" class="image-preview-name">pilt.jpg</span>
+              <div class="image-preview-badges">
+                <span id="image-dimensions-badge" class="image-badge">0 × 0 px</span>
+                <span id="image-file-size" class="image-badge">0 KB</span>
+              </div>
+            </div>
+            <button id="image-remove-btn" class="file-remove-btn" title="Eemalda pilt" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Quick Demo Chips for Image -->
+          <div class="demo-chips">
+            <span class="demo-label">Kiirproov:</span>
+            <button class="chip-btn" id="demo-image-btn" type="button">
+              🖼️ Proovi näidisfotot (Sony EXIF + GPS + OCR Tekst)
+            </button>
+          </div>
+
+          <!-- Convert Image Button -->
+          <div style="margin-top: 18px; display: flex; justify-content: flex-end;">
+            <button id="convert-image-btn" class="primary-btn" type="button" style="background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);">
+              <span class="btn-text" id="convert-image-btn-text">Analüüsi Pilti (EXIF & OCR)</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <!-- Image Options Panel -->
+        <section class="options-card glass-panel">
+          <div class="options-header">
+            <div class="options-title-group">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span class="options-title">Pildi Analüüsi Sätted</span>
+            </div>
+            <span class="options-tag" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">RapidOCR & Pillow EXIF</span>
+          </div>
+
+          <div class="options-grid">
+            <div class="option-field toggle-field">
+              <label class="field-label">Optiline tekstituvastus (OCR):</label>
+              <label class="switch-container">
+                <input type="checkbox" id="image-ocr-toggle" checked>
+                <span class="switch-slider"></span>
+                <span class="switch-label">Tuvasta pildilt trükitekst (RapidOCR süvaõppemudel)</span>
+              </label>
+            </div>
+            <div class="option-field toggle-field">
+              <label class="field-label">EXIF metaandmed & GPS:</label>
+              <label class="switch-container">
+                <input type="checkbox" id="image-exif-toggle" checked>
+                <span class="switch-slider"></span>
+                <span class="switch-label">Ekstraheeri kaamera andmed, säritus ja asukoht Google Maps kaardiga</span>
+              </label>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===================================================================
+           LOADING STATE INDICATOR
+           =================================================================== -->
+      <section class="loading-panel glass-panel" id="loading-panel" style="display: none;">
+        <div class="pulse-ring"></div>
+        <div class="loading-spinner"></div>
+        <h3 class="loading-title" id="loading-step-title">Töötlen sisu...</h3>
+        <p class="loading-sub" id="loading-step-desc">Laadin andmed ja teisendan Markdowniks</p>
+      </section>
+
+      <!-- ===================================================================
+           ERROR BANNER
+           =================================================================== -->
+      <div class="error-banner" id="error-banner" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message" id="error-message">Tekkis viga!</div>
+        <button class="error-close" id="error-close" type="button">×</button>
+      </div>
+
+      <!-- ===================================================================
+           RESULTS CARD (SHARED FOR ALL MODES)
+           =================================================================== -->
+      <section class="results-card glass-panel" id="results-card" style="display: none;">
+        <!-- Stats bar -->
+        <div class="stats-bar" id="stats-bar">
+          <div class="stat-box">
+            <span class="stat-value" id="stat-val-1">0</span>
+            <span class="stat-label" id="stat-lbl-1">Sõna</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-value" id="stat-val-2">0</span>
+            <span class="stat-label" id="stat-lbl-2">Tähemärki</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-value" id="stat-val-3">~0 min</span>
+            <span class="stat-label" id="stat-lbl-3">Lugemisaeg</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-value" id="stat-val-4">MarkItDown</span>
+            <span class="stat-label" id="stat-lbl-4">Mootor</span>
+          </div>
+        </div>
+
+        <!-- Action Toolbar -->
+        <div class="results-toolbar">
+          <div class="tabs-nav" id="results-tabs" role="tablist">
+            <button class="tab-btn active" data-tab="tab-rendered" role="tab">Visuaalne Markdown</button>
+            <button class="tab-btn" data-tab="tab-structured" id="tab-btn-structured" role="tab" style="display: none;">📊 Struktureeritud Vaade</button>
+            <button class="tab-btn" data-tab="tab-raw" role="tab">Toor-Markdown</button>
+            <button class="tab-btn" data-tab="tab-plain" id="tab-btn-plain" role="tab">Puhas Tekst</button>
+            <button class="tab-btn" data-tab="tab-srt" id="tab-btn-srt" role="tab">SRT Subtiitrid</button>
+            <button class="tab-btn" data-tab="tab-meta" id="tab-btn-meta" role="tab" style="display: none;">Metaandmed & EXIF</button>
+            <button class="tab-btn" data-tab="tab-prompts" role="tab">💡 AI Konspekt</button>
+          </div>
+
+          <div class="export-actions">
+            <button id="copy-btn" class="export-btn primary" title="Kopeeri lõikelauale" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Kopeeri</span>
+            </button>
+            <button id="download-json-btn" class="export-btn" title="Laadi alla JSON failina (.json)" type="button">
+              <span>.JSON</span>
+            </button>
+            <button id="download-md-btn" class="export-btn" title="Laadi alla Markdown failina (.md)" type="button">
+              <span>.MD</span>
+            </button>
+            <button id="download-txt-btn" class="export-btn" title="Laadi alla tekstifailina (.txt)" type="button">
+              <span>.TXT</span>
+            </button>
+            <button id="download-srt-btn" class="export-btn" title="Laadi alla SRT subtiitrifailina (.srt)" type="button">
+              <span>.SRT</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-content-container">
+          <div class="tab-pane active" id="tab-rendered" role="tabpanel">
+            <div class="markdown-body" id="rendered-content"></div>
+          </div>
+          <div class="tab-pane" id="tab-structured" role="tabpanel">
+            <div id="structured-view-container" class="structured-view-container"></div>
+          </div>
+          <div class="tab-pane" id="tab-raw" role="tabpanel">
+            <div class="code-wrapper">
+              <pre><code id="raw-markdown-code" class="code-block"></code></pre>
+            </div>
+          </div>
+          <div class="tab-pane" id="tab-plain" role="tabpanel">
+            <div class="plain-text-box" id="plain-text-content"></div>
+          </div>
+          <div class="tab-pane" id="tab-srt" role="tabpanel">
+            <div class="code-wrapper">
+              <pre><code id="srt-code" class="code-block"></code></pre>
+            </div>
+          </div>
+          <div class="tab-pane" id="tab-meta" role="tabpanel">
+            <div id="metadata-view-container" class="metadata-view-container"></div>
+          </div>
+          <div class="tab-pane" id="tab-prompts" role="tabpanel">
+            <div class="ai-prompts-grid" id="ai-prompts-grid">
+              <div class="prompt-card">
+                <div class="prompt-card-header">
+                  <h4>📋 Lühike kokkuvõte & põhipunktid</h4>
+                  <button class="prompt-copy-btn" data-type="summary" type="button">Kopeeri prompt koos tekstiga</button>
+                </div>
+                <p class="prompt-text">"Palun koosta järgmisest sisust selge ja struktureeritud kokkuvõte koos 5 olulisema põhipunktiga."</p>
+              </div>
+              <div class="prompt-card">
+                <div class="prompt-card-header">
+                  <h4>🎯 Tegevuskava & ülesanded</h4>
+                  <button class="prompt-copy-btn" data-type="actions" type="button">Kopeeri prompt koos tekstiga</button>
+                </div>
+                <p class="prompt-text">"Eralda sellest materjalist kõik konkreetsed tegevusjuhised, nõuanded ja tegevuskavad kronoloogilises järjekorras."</p>
+              </div>
+              <div class="prompt-card">
+                <div class="prompt-card-header">
+                  <h4>💡 Küsimused & vastused (KKK)</h4>
+                  <button class="prompt-copy-btn" data-type="faq" type="button">Kopeeri prompt koos tekstiga</button>
+                </div>
+                <p class="prompt-text">"Loo selle dokumendi/materjali põhjal 5 korduma kippuvat küsimust koos põhjalike vastustega."</p>
+              </div>
+              <div class="prompt-card">
+                <div class="prompt-card-header">
+                  <h4>📚 Õppekonspekt & analüüs</h4>
+                  <button class="prompt-copy-btn" data-type="study" type="button">Kopeeri prompt koos tekstiga</button>
+                </div>
+                <p class="prompt-text">"Muuda see tekst professionaalseks õppematerjaliks: seleta lahti põhimõisted, seosed ja esita kordamisküsimused."</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Batch Mode Modal / Drawer -->
+      <div class="modal-overlay" id="batch-modal" style="display: none;">
+        <div class="modal-card glass-panel">
+          <div class="modal-header">
+            <div class="modal-title-group">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <h3>Hulgitranskribeerimine (Batch)</h3>
+            </div>
+            <button class="modal-close" id="batch-close-btn" type="button">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-desc">Sisesta mitu YouTube video linki (iga link eraldi real):</p>
+            <textarea id="batch-urls-input" class="batch-textarea" placeholder="https://www.youtube.com/watch?v=...&#10;https://youtu.be/...&#10;https://www.youtube.com/watch?v=..." rows="6"></textarea>
+            
+            <div class="batch-actions">
+              <button id="batch-start-btn" class="primary-btn" type="button">
+                <span>Käivita töötlemine</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            <div id="batch-results-list" class="batch-results-list" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-content">
+        <p>Ehitatud <a href="https://github.com/microsoft/markitdown" target="_blank" rel="noopener noreferrer">Microsoft MarkItDown</a> baasil • YouTube, PDF & OCR Studio</p>
+        <p class="footer-sub">Võimaldab YouTube kõnetuvastust, PDF tabelite ekstraheerimist ning piltide EXIF ja OCR analüüsi.</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <span class="toast-icon">✓</span>
+    <span class="toast-message" id="toast-message">Kopeeritud lõikelauale!</span>
+  </div>
+
+  <!-- App Script with cache buster -->
+  <script src="/static/js/app.js?v=2.1.0"></script>
+</body>
+</html>

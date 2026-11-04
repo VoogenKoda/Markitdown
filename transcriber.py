@@ -68,7 +68,13 @@ def find_valid_cookie_file() -> Optional[str]:
                     content = f.read()
                 valid_lines = [l for l in content.splitlines() if l.strip() and not l.strip().startswith("#")]
                 if valid_lines:
-                    return cp
+                    # Copy to temp file so yt-dlp can safely update cookies even if source is read-only
+                    tmp_cp = os.path.join(tempfile.gettempdir(), "yt_active_cookies.txt")
+                    try:
+                        shutil.copyfile(cp, tmp_cp)
+                        return tmp_cp
+                    except Exception:
+                        return cp
             except Exception:
                 continue
     return None

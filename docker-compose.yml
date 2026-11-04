@@ -7,5 +7,6 @@ services:
       - "8085:8000"
     environment:
       - PYTHONUNBUFFERED=1
+      - YOUTUBE_PROXY=${YOUTUBE_PROXY:-}
     volumes:
-      - ./cookies.txt:/app/cookies.txt:ro
+      - ./cookies.txt:/app/cookies.txt
